@@ -61,6 +61,7 @@ INSTALLED_APPS = (
     'webapp.apps.dynamic',
     'webapp.apps.pages',
     'webapp.apps.register',
+    'webapp.apps.btax',
 
     # Third party apps
     'flatblocks',
