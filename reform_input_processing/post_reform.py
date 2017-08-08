@@ -1,6 +1,6 @@
 import requests
 import time
-from all_params_reform import get_formatted_reform
+from all_params_reform import get_formatted_reform, REFORM, CG_REFORM
 
 BASE_URL = "http://127.0.0.1:8000/taxbrain/"
 # BASE_URL = "http://ospc-taxes7.herokuapp.com/taxbrain/"
@@ -24,19 +24,19 @@ def get_session(url=BASE_URL):
     return session, csrftoken
 
 
-def get_data(reform=None):
+def get_data(reform=REFORM):
     """read taxbrain styled reform"""
     # if reform is None:
     # DATA.update(MINI_REFORM)
     # return DATA
     # else:
     # at some point read in json reform
-    DATA.update(get_formatted_reform())
+    DATA.update(get_formatted_reform(reform=reform))
     return DATA
 
 
 def post_reform(session, data, url=BASE_URL):
-    response = session.post(BASE_URL, data=data)
+    response = session.post(url, data=data)
 
     # assert response.status_code == 200
     print("RESPONSE", response)
@@ -51,7 +51,7 @@ def post_reform(session, data, url=BASE_URL):
     pk = url[:-1].split('/')[-1]
 
     unique_url = BASE_URL + str(pk)
-    print ('unique_url', unique_url)
+    print('unique_url', unique_url)
 
     return session, pk
 

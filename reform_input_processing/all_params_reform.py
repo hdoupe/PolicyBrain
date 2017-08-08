@@ -163,10 +163,21 @@ REFORM = {u'_ACTC_ChildNum': [4.0],
          u'_STD': [[7350, 13700, 7351, 10350, 12700.0]],
          u'_STD_Aged': [[2400, 2200, 2100, 2401, 1550.0]]}
 
-def get_formatted_reform():
+
+CG_REFORM = {u'_CG_rt1': [0.15],
+             u'_CG_rt2': [0.25],
+             u'_CG_rt3': [0.40],
+             u'_CG_rt4': [0.5],
+             u'_AMT_CG_rt1': [0.11],
+             u'_AMT_CG_rt2': [0.21],
+             u'_AMT_CG_rt3': [0.36],
+             u'_AMT_CG_rt4': [0.55]}
+
+
+def get_formatted_reform(reform=REFORM):
     formatted = {}
-    for param in REFORM:
-        v = REFORM[param]
+    for param in reform:
+        v = reform[param]
         form_param = param[1:]
         if isinstance(v[0], list):
             for i in range(0, min(len(v[0]),4)):
