@@ -26,12 +26,13 @@ SPECIAL_NON_INFLATABLE_PARAMS = {'_ACTC_ChildNum', '_EITC_MinEligAge',
 # Grammar for Field inputs
 WILDCARD = pp.Word('*')
 INT_LIT = pp.Word(pp.nums)
+NEG_DASH = pp.Word('-', exact=1)
 FLOAT_LIT = pp.Word(pp.nums + '.')
 DEC_POINT = pp.Word('.', exact=1)
 FLOAT_LIT_FULL = pp.Word(pp.nums + '.' + pp.nums)
 COMMON = pp.Word(",", exact=1)
 
-VALUE = WILDCARD | FLOAT_LIT_FULL | FLOAT_LIT | INT_LIT
+VALUE = WILDCARD | NEG_DASH | FLOAT_LIT_FULL | FLOAT_LIT | INT_LIT
 MORE_VALUES = COMMON + VALUE
 INPUT = VALUE + pp.ZeroOrMore(MORE_VALUES)
 
@@ -50,7 +51,7 @@ def check_wildcards(x):
 
 
 def make_bool(x):
-    b = True if x == 'True' else False
+    b = 1.0 if x == 'True' else 0.0
     return b
 
 
@@ -245,6 +246,78 @@ TAXCALC_RESULTS_TOTAL_ROW_KEY_LABELS = {
     'payroll_tax':'Payroll Tax Liability Change',
     'combined_tax':'Combined Payroll and Individual Income Tax Liability Change',
 }
+
+
+def get_default_policy_param_name(param, default_params):
+    if '_' + param in default_params:
+        return '_' + param
+    param_pieces = param.split('_')
+    end_piece = param_pieces[-1]
+    no_suffix = '_' + '_'.join(param_pieces[:-1])
+    if end_piece == 'cpi':
+        if no_suffix in default_params:
+            return '_' + param
+        else:
+            msg = "Received unexpected parameter: {}"
+            raise ValueError(msg.format(param))
+    if no_suffix in default_params:
+        try:
+            ix = int(end_piece)
+        except ValueError:
+            msg = "Parsing {}: Expected integer for index but got {}"
+            raise ValueError(msg.format(param, ix))
+        col_label = default_params[no_suffix]['col_label'][ix]
+        return no_suffix + '_' + col_label
+    msg = "Received unexpected parameter: {}"
+    raise ValueError(msg.format(param))
+
+
+def to_json_reform(fields, start_year):
+    """
+    Convert fields style dictionary to json reform style dictionary
+    For example:
+    fields = {'_state': <django.db.models.base.ModelState object at 0x10c764950>,
+              'creation_date': datetime.datetime(2015, 1, 1, 0, 0), 'id': 64,
+              'ID_ps_cpi': True, 'quick_calc': False,
+              'FICA_ss_trt': [u'*', 0.1, u'*', 0.2], 'first_year': 2017,
+              'ID_BenefitSurtax_Switch_0': [True], 'ID_Charity_c_cpi': True,
+              'EITC_rt_2': [1.0]}
+    to
+    reform = {'_CG_nodiff': {'2017': [False]},
+              '_FICA_ss_trt': {'2020': [0.2], '2018': [0.1]},
+              '_ID_Charity_c_cpi': {'2017': True},
+              '_EITC_rt_2kids': {'2017': [1.0]}}
+    """
+    map_back_to_tb = {}
+    default_params = taxcalc.Policy.default_data(start_year=start_year,
+                                                 metadata=True)
+    ignore = (u'has_errors', u'csrfmiddlewaretoken', u'start_year',
+              u'full_calc', u'quick_calc', 'first_year', '_state',
+              'creation_date', 'id')
+
+    reform = {}
+    for param in fields:
+        if param not in ignore:
+            param_name = get_default_policy_param_name(param, default_params)
+            map_back_to_tb[param_name] = param
+            reform[param_name] = {}
+            if not isinstance(fields[param], list):
+                assert isinstance(fields[param], bool) and param.endswith('_cpi')
+                reform[param_name][str(start_year)] = fields[param]
+                continue
+            for i in range(len(fields[param])):
+                if is_wildcard(fields[param][i]):
+                    # may need to do something here
+                    pass
+                else:
+                    assert (isinstance(fields[param][i], (int, float)) or
+                            isinstance(fields[param][i], bool))
+                    reform[param_name][str(start_year + i)] = [fields[param][i]]
+
+    return reform, map_back_to_tb
+
+
+
 
 def expand_1D(x, num_years):
     """
@@ -738,11 +811,8 @@ def parse_top_level(ordered_dict):
 
 
 def nested_form_parameters(budget_year=2017):
-    defaults = default_taxcalc_data(
-        taxcalc.policy.Policy,
-        metadata=True,
-        start_year=budget_year
-    )
+    defaults = taxcalc.policy.Policy.default_data(metadata=True,
+                                                  start_year=budget_year)
     groups = parse_top_level(defaults)
     for x in groups:
         for y, z in x.iteritems():
