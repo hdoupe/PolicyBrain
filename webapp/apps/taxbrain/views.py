@@ -14,6 +14,7 @@ MOCK_MODULES = ['matplotlib', 'matplotlib.pyplot', 'mpl_toolkits',
 ENABLE_QUICK_CALC = bool(os.environ.get('ENABLE_QUICK_CALC', ''))
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
+import traceback
 
 import taxcalc
 import datetime
@@ -81,7 +82,9 @@ def benefit_switch_fixup(request, reform, model, name="ID_BenefitSurtax_Switch")
     """
     _ids = [name + '_' + str(i) for i in range(7)]
     values_from_model = [[reform[_id][0] for _id in _ids]]
-    final_values = [[True if _id in request else switch for (switch, _id) in zip(values_from_model[0], _ids)]]
+    print("values_from_model", values_from_model)
+    final_values = [[1.0 if _id in request else switch for (switch, _id) in zip(values_from_model[0], _ids)]]
+    print("final_values", final_values)
     for _id, val in zip(_ids, final_values[0]):
         reform[_id] = [val]
         setattr(model, _id, unicode(val))
@@ -237,14 +240,21 @@ def get_reform_from_gui(request, model=None, stored_errors=None):
     worker_data = benefit_switch_fixup(request.REQUEST, worker_data, model,
                                        name="ID_BenefitCap_Switch")
     amt_fixup(request.REQUEST, worker_data, model)
-
+    print(worker_data)
     # convert GUI input to json style taxcalc reform
     policy_dict_json, map_back_to_tb = to_json_reform(worker_data, int(start_year))
     policy_dict_json = {"policy": policy_dict_json}
     # convert json style taxcalc reform to dict style taxcalc reform
-    policy_dict = taxcalc.Calculator.read_json_param_files(json.dumps(policy_dict_json),
+    try:
+        policy_dict = taxcalc.Calculator.read_json_param_files(json.dumps(policy_dict_json),
                                                            None,
                                                            arrays_not_lists=False)
+    except Exception as e:
+        print("ACTUAL ERROR")
+        traceback.print_exc()
+        raise e
+    print('policy_dict', policy_dict)
+
     # get errors and warnings on user input from taxcalc
     errors_warnings = taxcalc.dropq.reform_warnings_errors(policy_dict)
     errors_warnings = parse_errors_warnings(errors_warnings,
@@ -285,6 +295,7 @@ def submit_reform(request, user=None):
         (reform_dict, assumptions_dict, reform_text, assumptions_text,
             errors_warnings) = get_reform_from_file(request)
     else:
+        print('fields', fields)
         personal_inputs = PersonalExemptionForm(start_year, fields)
         model = personal_inputs.save()
         (reform_dict, assumptions_dict, reform_text, assumptions_text,
@@ -295,8 +306,6 @@ def submit_reform(request, user=None):
         if personal_inputs.non_field_errors() and False:
             return HttpResponse("Bad Input!", status=400)
 
-
-    print('ERROR', errors_warnings)
 
     if reform_dict == {}:
         msg = "No reform file uploaded"
@@ -594,7 +603,6 @@ def get_result_context(model, request, url):
     else:
         reform_file_contents = False
         assump_file_contents = False
-    print("JSONTEXT", reform_file_contents, model.json_text)
 
     if hasattr(request, 'user'):
         is_registered = True if request.user.is_authenticated() else False
@@ -639,6 +647,7 @@ def output_detail(request, pk):
     model = url.unique_inputs
     if model.tax_result:
         context = get_result_context(model, request, url)
+        print('TAXRESULT', model.tax_result)
         context["raw_reform_text"] = model.json_text.raw_reform_text if model.json_text else ""
         context["raw_assumption_text"] = model.json_text.raw_assumption_text if model.json_text else ""
         return render(request, 'taxbrain/results.html', context)

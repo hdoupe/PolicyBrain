@@ -51,13 +51,14 @@ def run_reform(start_year, reform, assump=None, reform_dq=None, data=DATA):
     wait_time = 700
     while tb is None and (datetime.now() - start).seconds < wait_time:
         time.sleep(20)
+        print('check', (datetime.now() - start).seconds, response.url)
         # load the database
         requests.get(response.url)
         tb = get_taxbrain_result(pk)
-
+    print("TB result", tb is None)
     print("TIME", (datetime.now() - start).seconds)
     if tb is None:
-        assert "no results after {} minutes".format(round(wait_time/60.0))
+        assert tb == "no results after {} minutes".format(round(wait_time/60.0))
     else:
         assert_results_equal(tb, dq)
 
@@ -116,9 +117,10 @@ def test_r1a2_2016_reform():
 
 
 @pytest.mark.requires_pufcsv
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_allparams_2017_reform():
     # fails--results not within 2 percent
+    # passes after 619 fix
     reform_tb = get_formatted_reform()
     reform_dq = REFORM
     reform_dq = {2017: REFORM}
