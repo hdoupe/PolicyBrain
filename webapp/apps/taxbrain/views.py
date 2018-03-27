@@ -685,14 +685,43 @@ def get_result_context(model, request, url):
     }
 
     if (model.json_text is not None and (model.json_text.raw_reform_text or
-       model.json_text.raw_assumption_text)):
-        reform_file_contents = model.json_text.raw_reform_text
-        reform_file_contents = reform_file_contents.replace(" ","&nbsp;")
-        assump_file_contents = model.json_text.raw_assumption_text
-        assump_file_contents = assump_file_contents.replace(" ","&nbsp;")
+       model.json_text.raw_assumption_text or model.json_text.reform_text)):
+
+
+        if model.json_text.raw_reform_text is not None:
+            uploaded_reform = model.json_text.raw_reform_text
+            uploaded_reform = uploaded_reform.replace(" ","&nbsp;")
+
+        if model.json_text.reform_text is not None:
+            if isinstance(model.json_text.reform_text, dict):
+                submitted_reform = json.dumps(model.json_text.reform_text, indent=4)
+            else:
+                submitted_reform = json.dumps(
+                    json.loads(model.json_text.reform_text),
+                    indent=4
+                )
+            submitted_reform = submitted_reform.replace(" ","&nbsp;")
+
+        if model.json_text.raw_assumption_text is not None:
+            uploaded_assump = model.json_text.raw_assumption_text
+            uploaded_assump = uploaded_assump.replace(" ","&nbsp;")
+
+        if model.json_text.assumption_text is not None:
+            if isinstance(model.json_text.assumption_text, dict):
+                submitted_assump = json.dumps(model.json_text.assumption_text, indent=4)
+            else:
+                submitted_assump = json.dumps(
+                    json.loads(model.json_text.assumption_text),
+                    indent=4
+                )
+            submitted_assump = json.dumps(submitted_assump, indent=4)
+            submitted_assump = uploaded_assump.replace(" ","&nbsp;")
+
     else:
-        reform_file_contents = False
-        assump_file_contents = False
+        uploaded_reform = False
+        uplaoded_assump = False
+        submitted_reform = False
+        submitted_assump = False
 
     if hasattr(request, 'user'):
         is_registered = True if request.user.is_authenticated() else False
@@ -729,9 +758,11 @@ def get_result_context(model, request, url):
         'quick_calc': quick_calc,
         'is_registered': is_registered,
         'is_micro': True,
-        'reform_file_contents': reform_file_contents,
-        'assump_file_contents': assump_file_contents,
-        'allow_dyn_links': True if not assump_file_contents else False,
+        'uploaded_reform': uploaded_reform,
+        'uploaded_assump': uploaded_assump,
+        'submitted_reform': submitted_reform,
+        'submitted_assump': submitted_assump,
+        'allow_dyn_links': True if not uploaded_assump else False,
         'results_type': "static"
     }
     return context
@@ -760,8 +791,6 @@ def output_detail(request, pk):
     if model.tax_result:
         context = get_result_context(model, request, url)
         context.update(context_vers_disp)
-        context["raw_reform_text"] = model.json_text.raw_reform_text if model.json_text else ""
-        context["raw_assumption_text"] = model.json_text.raw_assumption_text if model.json_text else ""
         return render(request, 'taxbrain/results.html', context)
     elif model.error_text:
         return render(request, 'taxbrain/failed.html', {"error_msg": model.error_text.text})

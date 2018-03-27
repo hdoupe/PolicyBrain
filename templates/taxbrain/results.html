@@ -70,16 +70,27 @@
         {% endif %}
         {% endif %}
       </div>
-      {% if reform_file_contents %}
+      {% if uploaded_reform or uploaded_assump %}
       <h2> The following reform file(s) were uploaded for this simulation: </h2>
       <div class="file-contents">
           {%autoescape off %}
-          {{ raw_reform_text  | nbsp | linebreaks | safe}}
+          {{ uploaded_reform  | nbsp | linebreaks | safe}}
           {%endautoescape %}
           {%autoescape off %}
-          {{ raw_assumption_text | nbsp | linebreaks | safe}}
+          {{ uploaded_assump | nbsp | linebreaks | safe}}
           {%endautoescape %}
        </div>
+       {% endif %}
+       {% if submitted_reform or submitted_assump %}
+       <h2> The following reform files(s) were submitted to the simulation software: </h2>
+       <div class="file-contents">
+           {%autoescape off %}
+           {{ submitted_reform  | nbsp | linebreaks | safe}}
+           {%endautoescape %}
+           {%autoescape off %}
+           {{ submitted_assump | nbsp | linebreaks | safe}}
+           {%endautoescape %}
+        </div>
       {% endif %}
     </div>
   </div>
