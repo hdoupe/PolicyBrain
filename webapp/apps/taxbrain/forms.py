@@ -12,7 +12,8 @@ from .models import TaxSaveInputs
 from .helpers import (is_number,
                       int_to_nth, is_string, string_to_float_array,
                       check_wildcards, default_taxcalc_data, expand_list,
-                      propagate_user_list, convert_val, INPUT, INPUTS_META)
+                      propagate_user_list, convert_val, INPUTS_META,
+                      is_safe)
 from .param_displayers import TaxCalcField, TaxCalcParam, default_policy
 from .param_formatters import (get_default_policy_param,
                                ParameterLookUpException)
@@ -135,11 +136,10 @@ class PolicyBrainForm:
             if param_name == 'data_source':
                 assert value in ('CPS', 'PUF')
             elif isinstance(value, six.string_types) and len(value) > 0:
-                try:
-                    INPUT.parseString(value)
-                except (ParseException, AssertionError):
+                if not is_safe(value):
                     # Parse Error - we don't recognize what they gave us
                     self.add_error(param_name, "Unrecognized value: {}".format(value))
+                    print('failed to parse', param_name, value)
                 try:
                     # reverse character is not at the beginning
                     assert value.find('<') <= 0

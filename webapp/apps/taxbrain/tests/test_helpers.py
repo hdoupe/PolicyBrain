@@ -3,7 +3,7 @@ import json
 import numpy as np
 import taxcalc
 import pyparsing as pp
-from ..helpers import (rename_keys, json_int_key_encode, INPUT, make_bool,
+from ..helpers import (rename_keys, json_int_key_encode, is_safe, make_bool,
                        is_reverse,
                        reorder_lists)
 from ..param_formatters import parse_value, MetaParam
@@ -168,12 +168,11 @@ def test_reorder_lists():
      '<,True', '<,1']
 )
 def test_parsing_pass(item):
-    INPUT.parseString(item)
+    assert is_safe(item)
 
-@pytest.mark.parametrize('item', ['abc', '<,', '<', '1,<', '0,<,1', 'True,<', '-0.002,<,-0.001'])
+@pytest.mark.parametrize('item', ['abc', '01', 'abc,def', '<,abc', '1,abc,2'])
 def test_parsing_fail(item):
-    with pytest.raises(pp.ParseException):
-        INPUT.parseString('abc')
+    assert not is_safe(item)
 
 @pytest.mark.parametrize(
     'item,exp',
