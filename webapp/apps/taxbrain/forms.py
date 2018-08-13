@@ -244,7 +244,7 @@ class TaxBrainForm(PolicyBrainForm, ModelForm):
         # 1. initial is specified in `kwargs` (reform has warning/error msgs)
         # 2. if `instance` is specified and `initial` is added above
         #    (edit parameters page)
-        if kwargs.get("initial", False):
+        if "initial" in kwargs:
             for k, v in kwargs["initial"].items():
                 if k.endswith("cpi") and v:
                     # raw data is stored as choices 1, 2, 3 with the following
@@ -262,6 +262,9 @@ class TaxBrainForm(PolicyBrainForm, ModelForm):
                         k
                     )
                     self.widgets[k].attrs["placeholder"] = django_val
+
+            if not hasattr(self, 'cleaned_data'):
+                self.cleaned_data = {'raw_input_fields': kwargs['initial']}
 
         super(TaxBrainForm, self).__init__(*args, **kwargs)
 
